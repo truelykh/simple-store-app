@@ -2,19 +2,14 @@ pipeline {
     agent any
 
     environment {
-        SERVICE_NAME          = 'notification-service'
-        APP_DIR               = 'notification-service'
-        APP_GROUP_ID          = 'com.simplestore'
+        SERVICE_NAME          = 'frontend'
+        APP_DIR               = 'frontend'
 
-        NEXUS_HOST            = 'nexus-svc.nexus.svc.cluster.local:8081'
         NEXUS_DOCKER_REGISTRY = 'nexus-svc.nexus.svc.cluster.local:8082'
-        NEXUS_MAVEN_REPO      = 'maven-releases'
         IMAGE_PREFIX          = 'truelykh'
 
         GITHUB_CRED_ID        = 'github-pat'
         NEXUS_CRED_ID         = 'nexus-credentials'
-
-        GITOPS_REPO_URL       = 'https://github.com/truelykh/simple-store-gitops.git'
     }
 
     options {
@@ -31,58 +26,16 @@ pipeline {
             }
         }
 
-        stage('2. Unit Tests') {
+        stage('2. Build Frontend') {
             steps {
                 dir(env.APP_DIR) {
-                    sh 'mvn -B test'
+                    sh 'npm install'
+                    sh 'npm run build'
                 }
             }
         }
 
-        stage('3. Build & Package') {
-            steps {
-                script {
-                    env.APP_VERSION = "1.${BUILD_NUMBER.toInteger() - 1}"
-                }
-
-                dir(env.APP_DIR) {
-                    sh "mvn -B -Drevision=${APP_VERSION} clean package"
-                }
-            }
-        }
-
-        stage('4. Publish JAR to Nexus') {
-            when {
-                branch 'main'
-            }
-            steps {
-                script {
-                    env.APP_VERSION = "1.${BUILD_NUMBER.toInteger() - 1}"
-                }
-
-                dir(env.APP_DIR) {
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: env.NEXUS_CRED_ID,
-                            usernameVariable: 'NEXUS_USER',
-                            passwordVariable: 'NEXUS_PASS'
-                        )
-                    ]) {
-                        sh '''
-                            groupPath=$(echo "${APP_GROUP_ID}" | tr '.' '/')
-                            jarFile="target/app.jar"
-
-                            curl -sSf \
-                              -u "${NEXUS_USER}:${NEXUS_PASS}" \
-                              --upload-file "$jarFile" \
-                              "http://${NEXUS_HOST}/repository/${NEXUS_MAVEN_REPO}/${groupPath}/${SERVICE_NAME}/${APP_VERSION}/${SERVICE_NAME}-${APP_VERSION}.jar"
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('5. Docker Build') {
+        stage('3. Docker Build') {
             steps {
                 sh """
                     docker build \
@@ -92,7 +45,7 @@ pipeline {
             }
         }
 
-        stage('6. Trivy Scan') {
+        stage('4. Trivy Scan') {
             steps {
                 sh """
                     trivy image \
@@ -104,7 +57,7 @@ pipeline {
             }
         }
 
-        stage('7. Push Image to Nexus') {
+        stage('5. Push Image to Nexus') {
             when {
                 branch 'main'
             }
@@ -128,7 +81,7 @@ pipeline {
             }
         }
 
-        stage('8. Update GitOps') {
+        stage('6. Update GitOps') {
             when {
                 branch 'main'
             }

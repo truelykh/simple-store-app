@@ -2,23 +2,19 @@ pipeline {
     agent any
 
     environment {
-        SERVICE_NAME = 'product-service'
-        APP_DIR = 'product-service'
+        SERVICE_NAME          = 'product-service'
+        APP_DIR               = 'product-service'
+        APP_GROUP_ID          = 'com.simplestore'
 
-        APP_GROUP_ID = 'com.simplestore'
-
-        NEXUS_HOST = 'nexus-svc.nexus.svc.cluster.local:8081'
+        NEXUS_HOST            = 'nexus-svc.nexus.svc.cluster.local:8081'
         NEXUS_DOCKER_REGISTRY = 'nexus-svc.nexus.svc.cluster.local:8082'
-        NEXUS_MAVEN_REPO = 'maven-releases'
-        IMAGE_PREFIX = 'truelykh'
+        NEXUS_MAVEN_REPO      = 'maven-releases'
+        IMAGE_PREFIX          = 'truelykh'
 
-        GITHUB_CRED_ID = 'github-pat'
-        NEXUS_CRED_ID = 'nexus-credentials'
+        GITHUB_CRED_ID        = 'github-pat'
+        NEXUS_CRED_ID         = 'nexus-credentials'
 
-        REPO_URL = 'https://github.com/truelykh/simple-store-app.git'
-        BRANCH = 'main'
-
-        DOCKER_HOST = 'tcp://localhost:2375'
+        GITOPS_REPO_URL       = 'https://github.com/truelykh/simple-store-gitops.git'
     }
 
     options {
@@ -31,9 +27,7 @@ pipeline {
     stages {
         stage('1. SCM Checkout') {
             steps {
-                git branch: env.BRANCH,
-                    credentialsId: env.GITHUB_CRED_ID,
-                    url: env.REPO_URL
+                checkout scm
             }
         }
 
@@ -58,6 +52,9 @@ pipeline {
         }
 
         stage('4. Publish JAR to Nexus') {
+            when {
+                branch 'main'
+            }
             steps {
                 script {
                     env.APP_VERSION = "1.${BUILD_NUMBER.toInteger() - 1}"
@@ -75,7 +72,10 @@ pipeline {
                             groupPath=$(echo "${APP_GROUP_ID}" | tr '.' '/')
                             jarFile="target/app.jar"
 
-                            curl -sSf                               -u "${NEXUS_USER}:${NEXUS_PASS}"                               --upload-file "$jarFile"                               "http://${NEXUS_HOST}/repository/${NEXUS_MAVEN_REPO}/${groupPath}/${SERVICE_NAME}/${APP_VERSION}/${SERVICE_NAME}-${APP_VERSION}.jar"
+                            curl -sSf \
+                              -u "${NEXUS_USER}:${NEXUS_PASS}" \
+                              --upload-file "$jarFile" \
+                              "http://${NEXUS_HOST}/repository/${NEXUS_MAVEN_REPO}/${groupPath}/${SERVICE_NAME}/${APP_VERSION}/${SERVICE_NAME}-${APP_VERSION}.jar"
                         '''
                     }
                 }
@@ -84,21 +84,30 @@ pipeline {
 
         stage('5. Docker Build') {
             steps {
-                sh '''
-                    docker build                       -t "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"                       "${APP_DIR}"
-                '''
+                sh """
+                    docker build \
+                      -t "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}" \
+                      "${APP_DIR}"
+                """
             }
         }
 
         stage('6. Trivy Scan') {
             steps {
-                sh '''
-                    trivy image                       --severity HIGH,CRITICAL                       --no-progress                       --exit-code 0                       "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"
-                '''
+                sh """
+                    trivy image \
+                      --severity HIGH,CRITICAL \
+                      --no-progress \
+                      --exit-code 0 \
+                      "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"
+                """
             }
         }
 
         stage('7. Push Image to Nexus') {
+            when {
+                branch 'main'
+            }
             steps {
                 withCredentials([
                     usernamePassword(
@@ -107,19 +116,42 @@ pipeline {
                         passwordVariable: 'NEXUS_PASS'
                     )
                 ]) {
-                    sh '''
-                        echo "$NEXUS_PASS" | docker login                           "$NEXUS_DOCKER_REGISTRY"                           -u "$NEXUS_USER"                           --password-stdin
+                    sh """
+                        echo "\$NEXUS_PASS" | docker login \
+                          "${NEXUS_DOCKER_REGISTRY}" \
+                          -u "\$NEXUS_USER" \
+                          --password-stdin
 
-                        docker push                           "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"
-                    '''
+                        docker push "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"
+                    """
                 }
             }
         }
 
         stage('8. Update GitOps') {
+            when {
+                branch 'main'
+            }
             steps {
-                echo 'Update the separate GitOps repository here.'
-                echo 'Do not run kubectl apply from this application pipeline.'
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: env.GITHUB_CRED_ID,
+                        usernameVariable: 'GH_USER',
+                        passwordVariable: 'GH_TOKEN'
+                    )
+                ]) {
+                    sh """
+                        rm -rf gitops-repo
+                        git clone https://${GH_TOKEN}@github.com/truelykh/simple-store-gitops.git gitops-repo
+                        cd gitops-repo/${SERVICE_NAME}
+                        sed -i 's|image: .*|image: ${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}|g' deployment.yaml
+                        git config user.name "Jenkins CI"
+                        git config user.email "jenkins@simple-store.local"
+                        git add deployment.yaml
+                        git commit -m "Automated update: ${SERVICE_NAME} image tag to ${BUILD_NUMBER}"
+                        git push origin main
+                    """
+                }
             }
         }
     }

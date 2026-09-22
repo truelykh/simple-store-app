@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Validate All Microservices') {
+            parallel {
+                stage('User Service') {
+                    steps {
+                        dir('user-service') {
+                            sh 'mvn clean test'
+                        }
+                    }
+                }
+                stage('Product Service') {
+                    steps {
+                        dir('product-service') {
+                            sh 'mvn clean test'
+                        }
+                    }
+                }
+                stage('Order Service') {
+                    steps {
+                        dir('order-service') {
+                            sh 'mvn clean test'
+                        }
+                    }
+                }
+                stage('Payment Service') {
+                    steps {
+                        dir('payment-service') {
+                            sh 'mvn clean test'
+                        }
+                    }
+                }
+                stage('Notification Service') {
+                    steps {
+                        dir('notification-service') {
+                            sh 'mvn clean test'
+                        }
+                    }
+                }
+                stage('Frontend') {
+                    steps {
+                        dir('frontend') {
+                            sh 'npm install && npm run build'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
