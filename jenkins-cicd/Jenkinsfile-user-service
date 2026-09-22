@@ -97,6 +97,8 @@ pipeline {
             steps {
                 sh """
                     trivy image \
+                      --cache-dir "\${WORKSPACE}/.trivy-cache" \
+                      --scanners vuln \
                       --severity HIGH,CRITICAL \
                       --no-progress \
                       --exit-code 0 \

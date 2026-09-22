@@ -25,7 +25,7 @@ spec:
               - key: workload
                 operator: In
                 values:
-                  - wnode1
+                  - wnode4
   containers:
     - name: nexus-repo
       image: sonatype/nexus3:3.96.2
