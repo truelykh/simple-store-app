@@ -5,6 +5,9 @@ pipeline {
         SERVICE_NAME          = 'frontend'
         APP_DIR               = 'frontend'
 
+        APP_REPO_URL          = 'https://github.com/truelykh/simple-store-app.git'
+        GITOPS_REPO_URL       = 'https://github.com/truelykh/simple-store-gitops.git'
+
         NEXUS_DOCKER_REGISTRY = 'nexus-svc.nexus.svc.cluster.local:8082'
         IMAGE_PREFIX          = 'truelykh'
 

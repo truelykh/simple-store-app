@@ -6,6 +6,9 @@ pipeline {
         APP_DIR               = 'notification-service'
         APP_GROUP_ID          = 'com.simplestore'
 
+        APP_REPO_URL          = 'https://github.com/truelykh/simple-store-app.git'
+        GITOPS_REPO_URL       = 'https://github.com/truelykh/simple-store-gitops.git'
+
         NEXUS_HOST            = 'nexus-svc.nexus.svc.cluster.local:8081'
         NEXUS_DOCKER_REGISTRY = 'nexus-svc.nexus.svc.cluster.local:8082'
         NEXUS_MAVEN_REPO      = 'maven-releases'
@@ -13,8 +16,6 @@ pipeline {
 
         GITHUB_CRED_ID        = 'github-pat'
         NEXUS_CRED_ID         = 'nexus-credentials'
-
-        GITOPS_REPO_URL       = 'https://github.com/truelykh/simple-store-gitops.git'
     }
 
     options {
