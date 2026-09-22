@@ -7,7 +7,7 @@ pipeline {
         APP_GROUP_ID          = 'com.simplestore'
 
         APP_REPO_URL          = 'https://github.com/truelykh/simple-store-app.git'
-        GITOPS_REPO_URL       = 'https://github.com/truelykh/simple-store-gitops.git'
+        GITOPS_REPO_URL       = 'https://github.com/truelykh/simple-store-app.git'
 
         NEXUS_HOST            = 'nexus-svc.nexus.svc.cluster.local:8081'
         NEXUS_DOCKER_REGISTRY = 'nexus-svc.nexus.svc.cluster.local:8082'
@@ -161,13 +161,13 @@ pipeline {
                 ]) {
                     sh """
                         rm -rf gitops-repo
-                        git clone https://${GH_TOKEN}@github.com/truelykh/simple-store-gitops.git gitops-repo
-                        cd gitops-repo/${SERVICE_NAME}
+                        git clone https://${GH_TOKEN}@github.com/truelykh/simple-store-app.git gitops-repo
+                        cd gitops-repo/k8s-manifests/${SERVICE_NAME}
                         sed -i 's|image: .*|image: ${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}|g' deployment.yaml
                         git config user.name "Jenkins CI"
                         git config user.email "jenkins@simple-store.local"
                         git add deployment.yaml
-                        git commit -m "Automated update: ${SERVICE_NAME} image tag to ${BUILD_NUMBER}"
+                        git diff --staged --quiet || git commit -m "Automated update: ${SERVICE_NAME} image tag to ${BUILD_NUMBER}"
                         git push origin main
                     """
                 }

@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/truelykh/simple-store-gitops.git
+    repoURL: https://github.com/truelykh/simple-store-app.git
     targetRevision: main
-    path: .
+    path: k8s-manifests
   destination:
     server: https://kubernetes.default.svc
     namespace: simple-store
