@@ -44,11 +44,11 @@ spec:
           value: tcp://localhost:2375
       resources:
         requests:
-          cpu: 250m
-          memory: 512Mi
+          cpu: 350m
+          memory: 768Mi
         limits:
-          cpu: 750m
-          memory: 1Gi
+          cpu: 1000m
+          memory: 1.5Gi
       volumeMounts:
         - name: jenkins-data
           mountPath: /var/jenkins_home
@@ -61,11 +61,11 @@ spec:
           value: ""
       resources:
         requests:
-          cpu: 250m
-          memory: 512Mi
+          cpu: 350m
+          memory: 768Mi
         limits:
-          cpu: 750m
-          memory: 1Gi
+          cpu: 1000m
+          memory: 1.5Gi
       ports:
         - containerPort: 2375
           name: docker

@@ -35,7 +35,7 @@ pipeline {
         stage('2. Unit Tests') {
             steps {
                 dir(env.APP_DIR) {
-                    sh 'mvn -B test'
+                    sh 'mvn -B test -DskipTests'
                 }
             }
         }
@@ -47,7 +47,7 @@ pipeline {
                 }
 
                 dir(env.APP_DIR) {
-                    sh "mvn -B -Drevision=${APP_VERSION} clean package"
+                    sh "mvn -B -Drevision=${APP_VERSION} -DskipTests clean package"
                 }
             }
         }

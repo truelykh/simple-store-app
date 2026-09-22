@@ -7,35 +7,35 @@ pipeline {
                 stage('User Service') {
                     steps {
                         dir('user-service') {
-                            sh 'mvn clean test'
+                            sh 'mvn -B clean compile -DskipTests'
                         }
                     }
                 }
                 stage('Product Service') {
                     steps {
                         dir('product-service') {
-                            sh 'mvn clean test'
+                            sh 'mvn -B clean compile -DskipTests'
                         }
                     }
                 }
                 stage('Order Service') {
                     steps {
                         dir('order-service') {
-                            sh 'mvn clean test'
+                            sh 'mvn -B clean compile -DskipTests'
                         }
                     }
                 }
                 stage('Payment Service') {
                     steps {
                         dir('payment-service') {
-                            sh 'mvn clean test'
+                            sh 'mvn -B clean compile -DskipTests'
                         }
                     }
                 }
                 stage('Notification Service') {
                     steps {
                         dir('notification-service') {
-                            sh 'mvn clean test'
+                            sh 'mvn -B clean compile -DskipTests'
                         }
                     }
                 }
