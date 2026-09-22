@@ -54,7 +54,11 @@ pipeline {
 
         stage('4. Publish JAR to Nexus') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                    expression { env.BRANCH_NAME == null }
+                }
             }
             steps {
                 script {
@@ -97,6 +101,8 @@ pipeline {
             steps {
                 sh """
                     trivy image \
+                      --cache-dir "\${WORKSPACE}/.trivy-cache" \
+                      --scanners vuln \
                       --severity HIGH,CRITICAL \
                       --no-progress \
                       --exit-code 0 \
@@ -107,7 +113,11 @@ pipeline {
 
         stage('7. Push Image to Nexus') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                    expression { env.BRANCH_NAME == null }
+                }
             }
             steps {
                 withCredentials([
@@ -131,7 +141,11 @@ pipeline {
 
         stage('8. Update GitOps') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                    expression { env.BRANCH_NAME == null }
+                }
             }
             steps {
                 withCredentials([
