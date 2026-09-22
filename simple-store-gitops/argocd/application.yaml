@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/REPLACE_ME/simple-store-gitops.git
+    repoURL: https://github.com/truelykh/simple-store-app.git
     targetRevision: main
     path: .
   destination:

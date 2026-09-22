@@ -15,7 +15,7 @@ pipeline {
         GITHUB_CRED_ID = 'github-pat'
         NEXUS_CRED_ID = 'nexus-credentials'
 
-        REPO_URL = 'https://github.com/REPLACE_ME/simple-store.git'
+        REPO_URL = 'https://github.com/truelykh/simple-store-app.git
         BRANCH = 'main'
 
         DOCKER_HOST = 'tcp://localhost:2375'
