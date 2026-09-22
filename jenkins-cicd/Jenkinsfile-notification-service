@@ -25,6 +25,10 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
+    triggers {
+        githubPush()
+    }
+
     stages {
         stage('1. SCM Checkout') {
             steps {
