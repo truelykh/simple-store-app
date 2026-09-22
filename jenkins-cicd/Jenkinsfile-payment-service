@@ -1,0 +1,132 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVICE_NAME = 'payment-service'
+        APP_DIR = 'payment-service'
+
+        APP_GROUP_ID = 'com.simplestore'
+
+        NEXUS_HOST = 'nexus-svc.nexus.svc.cluster.local:8081'
+        NEXUS_DOCKER_REGISTRY = 'nexus-svc.nexus.svc.cluster.local:8082'
+        NEXUS_MAVEN_REPO = 'maven-releases'
+        IMAGE_PREFIX = 'truelykh'
+
+        GITHUB_CRED_ID = 'github-pat'
+        NEXUS_CRED_ID = 'nexus-credentials'
+
+        REPO_URL = 'https://github.com/REPLACE_ME/simple-store.git'
+        BRANCH = 'main'
+
+        DOCKER_HOST = 'tcp://localhost:2375'
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    stages {
+        stage('1. SCM Checkout') {
+            steps {
+                git branch: env.BRANCH,
+                    credentialsId: env.GITHUB_CRED_ID,
+                    url: env.REPO_URL
+            }
+        }
+
+        stage('2. Unit Tests') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'mvn -B test'
+                }
+            }
+        }
+
+        stage('3. Build & Package') {
+            steps {
+                script {
+                    env.APP_VERSION = "1.${BUILD_NUMBER.toInteger() - 1}"
+                }
+
+                dir(env.APP_DIR) {
+                    sh "mvn -B -Drevision=${APP_VERSION} clean package"
+                }
+            }
+        }
+
+        stage('4. Publish JAR to Nexus') {
+            steps {
+                script {
+                    env.APP_VERSION = "1.${BUILD_NUMBER.toInteger() - 1}"
+                }
+
+                dir(env.APP_DIR) {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: env.NEXUS_CRED_ID,
+                            usernameVariable: 'NEXUS_USER',
+                            passwordVariable: 'NEXUS_PASS'
+                        )
+                    ]) {
+                        sh '''
+                            groupPath=$(echo "${APP_GROUP_ID}" | tr '.' '/')
+                            jarFile="target/app.jar"
+
+                            curl -sSf                               -u "${NEXUS_USER}:${NEXUS_PASS}"                               --upload-file "$jarFile"                               "http://${NEXUS_HOST}/repository/${NEXUS_MAVEN_REPO}/${groupPath}/${SERVICE_NAME}/${APP_VERSION}/${SERVICE_NAME}-${APP_VERSION}.jar"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('5. Docker Build') {
+            steps {
+                sh '''
+                    docker build                       -t "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"                       "${APP_DIR}"
+                '''
+            }
+        }
+
+        stage('6. Trivy Scan') {
+            steps {
+                sh '''
+                    trivy image                       --severity HIGH,CRITICAL                       --no-progress                       --exit-code 0                       "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"
+                '''
+            }
+        }
+
+        stage('7. Push Image to Nexus') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: env.NEXUS_CRED_ID,
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASS'
+                    )
+                ]) {
+                    sh '''
+                        echo "$NEXUS_PASS" | docker login                           "$NEXUS_DOCKER_REGISTRY"                           -u "$NEXUS_USER"                           --password-stdin
+
+                        docker push                           "${NEXUS_DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SERVICE_NAME}:${BUILD_NUMBER}"
+                    '''
+                }
+            }
+        }
+
+        stage('8. Update GitOps') {
+            steps {
+                echo 'Update the separate GitOps repository here.'
+                echo 'Do not run kubectl apply from this application pipeline.'
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
