@@ -6,7 +6,6 @@ pipeline {
         APP_DIR = 'user-service'
 
         APP_GROUP_ID = 'com.simplestore'
-
         NEXUS_HOST = 'nexus-svc.nexus.svc.cluster.local:8081'
         NEXUS_DOCKER_REGISTRY = 'nexus-svc.nexus.svc.cluster.local:8082'
         NEXUS_MAVEN_REPO = 'maven-releases'
@@ -24,7 +23,7 @@ pipeline {
     options {
         timestamps()
         disableConcurrentBuilds()
-        timeout(time: 30, unit: 'MINUTES')
+        timeout(time: 31, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
